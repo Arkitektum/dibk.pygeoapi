@@ -714,6 +714,41 @@ frameworks, abstract tests 31 and 32 (OGC 21-045 A.8) included, with the stub
 formatter in `tests/dibk/profilestubs.py` and the config in
 `tests/dibk/pygeoapi-test-config-profiles.yml`.
 
+## Docker image
+
+**File:** `.github/workflows/dibk-docker.yml` — a new file.
+
+**What:** every push to a `dibk/<x.y.z>` branch runs `tests/dibk`, then builds
+`docker/dibk/Dockerfile` and pushes it to our registry. "Run workflow" in the
+Actions tab does the same by hand. Pushes that only touch `*.md` or `docs/`
+build nothing. The image is not meant to run on its own; other container
+setups use it as a base.
+
+The upstream release comes from the branch name and is passed as
+`PYGEOAPI_VERSION`, so the base image always matches the branch. The job
+fails if `__version__` in `pygeoapi/__init__.py` does not start with
+`<x.y.z>+dibk`, which catches a rebase that forgot to reset it (see Local
+version identifier). Tags for `0.24.0+dibk2` on `dibk/0.24.0`:
+
+- `0.24.0-dibk2` — Docker tags cannot contain `+`
+- `0.24.0` — the latest build from the branch
+- `sha-<short commit>` — never overwritten
+
+The first two are overwritten by every push until the version is bumped.
+
+The registry is set outside the repository, so moving to another one needs
+no commit: repository variable `DOCKER_REGISTRY` (host only), optional
+`DOCKER_IMAGE_NAME` (defaults to `dibk-pygeoapi`), and secrets
+`DOCKER_REGISTRY_USERNAME`/`DOCKER_REGISTRY_PASSWORD` for an identity with
+push rights.
+
+Only `tests/dibk` runs, not the whole subset: the subset has the known
+failures listed below on a bare runner. Upstream's own workflows still run on
+our branches as well — `main.yml`, `flake8.yml` and `vulnerabilities.yml`
+trigger on every push. Upstream's `containers.yml` does not, but it would fire,
+and fail for want of Docker Hub secrets, if upstream release tags were pushed
+to our remote.
+
 ## Pre-existing test failures at tag 0.24.0
 
 Recorded 2026-09-07 by running our subset (`pytest -c pytest-dibk.ini`) in a

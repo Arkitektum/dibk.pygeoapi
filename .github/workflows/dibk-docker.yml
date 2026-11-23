@@ -1,0 +1,133 @@
+# Builds docker/dibk/Dockerfile and pushes it to our registry on every
+# push to a dibk/<upstream version> branch, e.g. dibk/0.24.0. Can also be
+# started by hand from the Actions tab ("Run workflow").
+#
+# The registry is not named in this file. Set these in the repository
+# settings (Settings → Secrets and variables → Actions):
+#
+#   variables  DOCKER_REGISTRY             registry host, e.g. <name>.azurecr.io
+#              DOCKER_IMAGE_NAME           optional, defaults to dibk-pygeoapi
+#   secrets    DOCKER_REGISTRY_USERNAME    an identity with push rights
+#              DOCKER_REGISTRY_PASSWORD
+#
+# Tags pushed, for branch dibk/0.24.0 and __version__ '0.24.0+dibk2':
+#
+#   0.24.0-dibk2   the fork version ('+' is not allowed in Docker tags)
+#   0.24.0         the latest build from the branch
+#   sha-<commit>   this exact commit
+#
+# The first two are overwritten by later pushes to the same branch.
+#
+# See "Docker image" in FORK.md.
+
+name: DIBK Docker image
+
+on:
+  push:
+    branches:
+      - 'dibk/*'
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Run the fork's tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-starlette.txt
+            requirements-dev.txt
+
+      - name: Install requirements
+        run: |
+          pip install -r requirements.txt -r requirements-starlette.txt -r requirements-dev.txt
+          pip install .
+
+      # Only tests/dibk: the rest of our subset has known failures on a
+      # bare runner (see "Pre-existing test failures" in FORK.md), and
+      # tests/dibk is what pins our hooks.
+      - name: Run tests/dibk
+        run: python3 -m pytest -c pytest-dibk.ini tests/dibk
+
+  image:
+    name: Build and push the image
+    needs: test
+    runs-on: ubuntu-24.04
+    env:
+      DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY }}
+      DOCKER_IMAGE_NAME: ${{ vars.DOCKER_IMAGE_NAME || 'dibk-pygeoapi' }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      # The branch name gives the upstream release, which is also the
+      # base image tag. The fork version must belong to that release,
+      # so a rebase without resetting __version__ fails here.
+      - name: Work out versions
+        id: version
+        run: |
+          if [ -z "$DOCKER_REGISTRY" ]; then
+            echo "::error::Repository variable DOCKER_REGISTRY is not set"
+            exit 1
+          fi
+
+          upstream="${GITHUB_REF_NAME#dibk/}"
+          if [ "$upstream" = "$GITHUB_REF_NAME" ] || ! [[ "$upstream" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Run this on a dibk/<x.y.z> branch, not '$GITHUB_REF_NAME'"
+            exit 1
+          fi
+
+          version=$(sed -n "s/^__version__ = '\([^']*\)'.*/\1/p" pygeoapi/__init__.py)
+          if [[ "$version" != "$upstream+dibk"* ]]; then
+            echo "::error::pygeoapi/__init__.py has version '$version', expected $upstream+dibk<n>"
+            exit 1
+          fi
+
+          echo "upstream=$upstream" >> "$GITHUB_OUTPUT"
+          echo "tag=${version/+/-}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v4.4.1
+
+      - uses: docker/login-action@v4.8.0
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
+          password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+
+      - name: Image tags and labels
+        id: meta
+        uses: docker/metadata-action@v6.2.0
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_IMAGE_NAME }}
+          flavor: latest=false
+          tags: |
+            type=raw,value=${{ steps.version.outputs.tag }}
+            type=raw,value=${{ steps.version.outputs.upstream }}
+            type=sha
+
+      - uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          file: docker/dibk/Dockerfile
+          build-args: PYGEOAPI_VERSION=${{ steps.version.outputs.upstream }}
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
