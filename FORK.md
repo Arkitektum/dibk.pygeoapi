@@ -743,11 +743,13 @@ no commit: repository variable `DOCKER_REGISTRY` (host only), optional
 push rights.
 
 Only `tests/dibk` runs, not the whole subset: the subset has the known
-failures listed below on a bare runner. Upstream's own workflows still run on
-our branches as well — `main.yml`, `flake8.yml` and `vulnerabilities.yml`
-trigger on every push. Upstream's `containers.yml` does not, but it would fire,
-and fail for want of Docker Hub secrets, if upstream release tags were pushed
-to our remote.
+failures listed below on a bare runner.
+
+Upstream's own workflows are disabled in the repository settings (Actions →
+workflow → Disable workflow) rather than deleted, so their files stay identical
+to upstream. A disabled workflow stays disabled across rebases, but a workflow
+file that upstream adds in a new release starts enabled: after each rebase,
+check `.github/workflows/` and disable anything new.
 
 ## Pre-existing test failures at tag 0.24.0
 

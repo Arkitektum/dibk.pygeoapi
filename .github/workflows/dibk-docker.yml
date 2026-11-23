@@ -20,7 +20,7 @@
 #
 # See "Docker image" in FORK.md.
 
-name: DIBK Docker image
+name: DiBK Docker Image
 
 on:
   push:
