@@ -6,7 +6,7 @@
 #
 # The build context is the repository root, not this directory:
 #
-#   docker build -f docker/dibk/Dockerfile -t pygeoapi-dibk:0.24.0 .
+#   docker build -f docker/dibk/Dockerfile -t dibk-pygeoapi:0.24.0 .
 #
 # Context excludes come from Dockerfile.dockerignore next to this
 # file, which BuildKit uses in place of the root .dockerignore.
@@ -53,11 +53,12 @@ ARG DEB_BUILD_DEPS="\
 ARG PYTHON_PACKAGES="\
     starlette \
     uvicorn \
-    git+https://github.com/Arkitektum/pygeoapi.provider.styles.git@main \
-    git+https://github.com/Arkitektum/pygeoapi.provider.postgresql_ext.git@main \
-    git+https://github.com/Arkitektum/pygeoapi.provider.mvt_postgresql_ext.git@main \
-    git+https://github.com/Arkitektum/pygeoapi.formatter.jsonfg.git@main \
-    git+https://github.com/Arkitektum/pygeoapi.formatter.gml-npad.git@develop"
+    git+https://github.com/Arkitektum/dibk.pygeoapi.plugins@dibk_pygeoapi_plugins-v0.5.0#subdirectory=packages/dibk_pygeoapi_plugins \
+    git+https://github.com/Arkitektum/dibk.pygeoapi.plugins@postgresql_provider-v0.5.3#subdirectory=packages/postgresql_provider \
+    git+https://github.com/Arkitektum/dibk.pygeoapi.plugins@mvt_postgresql_provider-v0.5.0#subdirectory=packages/mvt_postgresql_provider \
+    git+https://github.com/Arkitektum/dibk.pygeoapi.plugins@styles_provider-v0.5.0#subdirectory=packages/styles_provider \
+    git+https://github.com/Arkitektum/dibk.pygeoapi.plugins@jsonfg_formatter-v0.5.0#subdirectory=packages/jsonfg_formatter \
+    git+https://github.com/Arkitektum/dibk.pygeoapi.plugins@gml_npad_formatter-v0.5.1#subdirectory=packages/gml_npad_formatter"
 
 COPY --from=build /dist/*.whl /tmp/
 
