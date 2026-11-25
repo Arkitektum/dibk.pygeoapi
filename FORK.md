@@ -757,11 +757,26 @@ push rights.
 Only `tests/dibk` runs, not the whole subset: the subset has the known
 failures listed below on a bare runner.
 
-Upstream's own workflows are disabled in the repository settings (Actions →
-workflow → Disable workflow) rather than deleted, so their files stay identical
-to upstream. A disabled workflow stays disabled across rebases, but a workflow
-file that upstream adds in a new release starts enabled: after each rebase,
-check `.github/workflows/` and disable anything new.
+## Upstream workflows removed
+
+**Files:** `.github/workflows/` — every upstream workflow deleted
+(`containers.yml`, `docs.yml`, `flake8.yml`, `main.yml`, `stale.yml`,
+`vulnerabilities.yml`). Only `dibk-docker.yml` is left.
+
+**Why:** upstream's workflows run on every push to `dibk/*`: the full test
+suite, flake8, a Trivy scan, and on tag pushes a Docker Hub publish. They are
+not ours to run (`stale.yml` is already guarded, but is removed too so the
+directory holds only our workflow). Disabling them in the repository settings did not stick
+across pushes, so they are deleted instead.
+
+**On rebase:** if upstream changed one of these files since the last release,
+the rebase stops with a modify/delete conflict. Resolve it with `git rm` on
+the file. A workflow file that upstream adds in a new release arrives
+silently: after each rebase, check that `.github/workflows/` holds only
+`dibk-docker.yml`, and delete anything new in this commit.
+
+**To drop this commit,** upstream would have to guard every workflow with
+`if: github.repository == 'geopython/pygeoapi'`, as `stale.yml` already does.
 
 ## Pre-existing test failures at tag 0.24.0
 

@@ -61,7 +61,9 @@ new release:
 7. Remove the worktree. Commit `FORK.md` only.
 
 Most failures are provider tests needing live PostGIS, Elasticsearch, MongoDB
-or Oracle. Check `.github/workflows/` for which services upstream CI starts
+or Oracle. Check upstream's `.github/workflows/main.yml` at the tag
+(`git show <tag>:.github/workflows/main.yml`; we delete it on our branch) for
+which services upstream CI starts
 before concluding a test is unrunnable.
 
 The api and openapi tests must stay in the runnable subset — that is where our
