@@ -75,9 +75,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
-      # The branch name gives the upstream release, which is also the
-      # base image tag. The fork version must belong to that release,
-      # so a rebase without resetting __version__ fails here.
+      # The branch name gives the upstream release. The fork version
+      # must belong to that release, so a rebase without resetting
+      # __version__ fails here.
       - name: Work out versions
         id: version
         run: |
@@ -124,7 +124,6 @@ jobs:
         with:
           context: .
           file: docker/dibk/Dockerfile
-          build-args: PYGEOAPI_VERSION=${{ steps.version.outputs.upstream }}
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

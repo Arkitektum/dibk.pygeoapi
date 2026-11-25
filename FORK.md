@@ -568,9 +568,8 @@ does not require touching the global table.
 __version__ = '0.24.0+dibk2'  # DIBK
 ```
 
-**Why:** the deploy image installs our wheel over
-`geopython/pygeoapi:0.24.0`, so without a distinguishing version there is no
-way to tell from a running container whether it serves upstream 0.24.0 or our
+**Why:** the deploy image installs our build as `pygeoapi`, so without a
+distinguishing version there is no way to tell from a running container whether it serves upstream 0.24.0 or our
 build. `+dibk1` is a PEP 440 local version identifier: it compares equal in
 release ordering to plain `0.24.0` and keeps `python3 -m build --wheel`
 producing an installable `pygeoapi-0.24.0+dibk1-py3-none-any.whl`.
@@ -724,9 +723,22 @@ Actions tab does the same by hand. Pushes that only touch `*.md` or `docs/`
 build nothing. The image is not meant to run on its own; other container
 setups use it as a base.
 
-The upstream release comes from the branch name and is passed as
-`PYGEOAPI_VERSION`, so the base image always matches the branch. The job
-fails if `__version__` in `pygeoapi/__init__.py` does not start with
+The image is built on `python:3.12-slim-trixie`, not on `geopython/pygeoapi`.
+Upstream's image installs about twenty Python packages with apt (GDAL,
+shapely, pyproj, pandas, scipy, ...), compiled against Ubuntu's NumPy 1.x, and
+exposes them to `/venv` through `--system-site-packages`; any package that
+pulls in NumPy 2 breaks them. Here every Python package comes from PyPI into a
+plain venv, and the GDAL bindings are built against Debian's libgdal with
+`GDAL==$(gdal-config --version)`. psycopg2 and gunicorn, which upstream's
+image supplied, are installed explicitly. The image defaults to Starlette
+(`WSGI_APP`, `WSGI_WORKER_CLASS`); gevent is not installed. Unlike upstream's
+image it ships no config and no source tree in `/pygeoapi`: upstream's demo
+config needs `tests/data` and SpatiaLite. Images built on top supply their own
+config, at `/pygeoapi/local.config.yml` or via `PYGEOAPI_CONFIG`, and must not
+install `python3-gdal` or other `python3-*` packages from apt,
+and use Debian's package names, not Ubuntu's.
+
+The upstream release comes from the branch name. The job fails if `__version__` in `pygeoapi/__init__.py` does not start with
 `<x.y.z>+dibk`, which catches a rebase that forgot to reset it (see Local
 version identifier). Tags for `0.24.0+dibk2` on `dibk/0.24.0`:
 

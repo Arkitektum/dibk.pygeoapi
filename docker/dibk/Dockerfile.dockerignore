@@ -9,9 +9,9 @@
 # Patterns are relative to the build context root (the repository
 # root), not to this directory.
 #
-# The wheel build in stage 1 needs setup.py, pyproject.toml,
-# MANIFEST.in, README.md, LICENSE.md, requirements.txt and pygeoapi/.
-# Nothing here may exclude those.
+# The install in stage 1 needs setup.py, pyproject.toml, MANIFEST.in,
+# README.md, LICENSE.md, requirements.txt and pygeoapi/. Nothing here
+# may exclude those.
 
 # --- from upstream's root .dockerignore --------------------------
 .git
@@ -34,10 +34,11 @@ __pycache__
 
 # Not part of the distribution: docs, tests, and the Docker files
 # themselves (this Dockerfile is passed with -f, not read from the
-# context).
+# context). The runtime stage copies upstream's entrypoint.
 docs
 tests
 docker
+!docker/entrypoint.sh
 
 # Never let an environment-specific config reach an image.
 local.config.yml
